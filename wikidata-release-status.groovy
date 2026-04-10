@@ -1,4 +1,4 @@
-#!/usr/bin/groovy
+#!/usr/bin/env groovy
 
 /*
  * This groovy script checks for latest truthy and lexemes downloads from Wikidata.
