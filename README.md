@@ -34,10 +34,26 @@ chmod +x wikidata-release-status.groovy
 
 Latest release is at array index 0.
 
+### Custom base URL (for testing)
+
+To test against a local repository, specify a custom base URL as the first argument:
+
+```bash
+./wikidata-release-status.groovy http://localhost/~the_user/wikidata/test-repo/
+```
+
+This is useful when using e.g. Apache with userdir to serve a local test repository.
+
+Options can be specified after the base URL:
+
+```bash
+./wikidata-release-status.groovy http://localhost/~the_user/wikidata/test-repo/ --since 20250601
+```
+
 Use `jq` for post processing, such as:
 
 ```bash
-/wikidata-release-status.groovy | jq -r '."truthy-BETA"[0].url'
+./wikidata-release-status.groovy | jq -r '."truthy-BETA"[0].url'
 
 https://dumps.wikimedia.org/wikidatawiki/entities/20250625/wikidata-20250625-truthy-BETA.nt.bz2
 ```
