@@ -114,9 +114,25 @@ sorted_filename=$(echo "$orig_filename" | sed -E 's|^(.*)(.nt.bz2)$|\1.sorted\2|
 sorted_path="$dump_dir/$sorted_filename"
 echo "Sorted file: $sorted_path" >&2
 
-echo "Sorting $orig_path..." >&2
-"$NQPATCH" track sort "$orig_path" "$sorted_path"
-echo "Sort complete" >&2
+if [ ! -f "$sorted_path" ]; then
+    echo "Sorting $orig_path..." >&2
+    "$NQPATCH" track sort "$orig_path" "$sorted_path"
+    echo "Sort complete" >&2
+else
+    echo "Already sorted: $sorted_path <- $orig_path" >&2
+fi
+
+json_obj='{"date": "'$NEW_DATE'"}'
+json_obj=$(echo "$json_obj" | \
+    jq --arg f "$orig_path" \
+       --arg s "$orig_path.sha1" \
+       '. + {orig: {filename: $f, sha1: $s}}')
+
+json_obj=$(echo "$json_obj" | \
+    jq --arg f "$sorted_path" \
+       --arg s "$sorted_path.sha1" \
+       --arg o "$sorted_path.sha1-original" \
+       '. + {dump: {filename: $f, sha1: $s, "sha1-original": $o}}')
 
 if [[ -n "$OLD_DATE" && -n "$OLD_SORTED_FILENAME" ]]; then
     old_year="${OLD_DATE:0:4}"
@@ -125,14 +141,28 @@ if [[ -n "$OLD_DATE" && -n "$OLD_SORTED_FILENAME" ]]; then
 
     diff_filename="wikidata-${OLD_DATE}-to-${NEW_DATE}-truthy-BETA.sorted.rdfp.bz2"
     diff_path="$diff_dir/$diff_filename"
-    echo "Creating diff: $diff_path" >&2
-    echo "  from: $OLD_SORTED_FILENAME" >&2
-    echo "  to:   $sorted_path" >&2
-    "$NQPATCH" track create "$OLD_SORTED_FILENAME" "$sorted_path" "$diff_path"
-    echo "Diff complete" >&2
+
+    if [ ! -f "$diff_path" ]; then
+        echo "Creating diff: $diff_path" >&2
+        echo "  from: $OLD_SORTED_FILENAME" >&2
+        echo "  to:   $sorted_path" >&2
+        "$NQPATCH" track create "$OLD_SORTED_FILENAME" "$sorted_path" "$diff_path"
+        echo "Diff complete" >&2
+    else
+        echo "Already diffed: $diff_path" >&2
+    fi
+
+    json_obj=$(echo "$json_obj" | \
+        jq --arg f "$diff_path" \
+           --arg s "$diff_path.sha1" \
+           --arg from "$diff_path.sha1-from" \
+           --arg to "$diff_path.sha1-to" \
+           '. + {diff: {filename: $f, sha1: $s, "sha1-from": $from, "sha1-to": $to }}')
 else
     echo "No diff created (no previous state)" >&2
 fi
+
+echo "$json_obj" > "publish-$NEW_DATE.json"
 
 relative_sorted_path="truthy-BETA/$NEW_YEAR/dumps/$sorted_filename"
 # write_state "$NEW_DATE" "$relative_sorted_path"
