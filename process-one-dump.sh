@@ -6,7 +6,7 @@ GROOVY_SCRIPT="$SCRIPT_DIR/wikidata-release-status.groovy"
 # NQPATCH="$SCRIPT_DIR/nqpatch"
 NQPATCH="nqpatch"
 
-STATE_FILE="./wikidata-sync.json"
+STATE_FILE="./wikidata-sync-state.json"
 
 show_usage() {
     echo "Usage: $0 [--init]" >&2
