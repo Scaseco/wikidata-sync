@@ -1,12 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+
 GROOVY_SCRIPT="$SCRIPT_DIR/wikidata-release-status.groovy"
 # NQPATCH="$SCRIPT_DIR/nqpatch"
 NQPATCH="nqpatch"
 
-STATE_FILE="./wikidata-sync-state.json"
+CONF_FILE="./wikidata-sync.conf.json"
 
 show_usage() {
     echo "Usage: $0 [--init]" >&2
@@ -15,18 +16,10 @@ show_usage() {
     exit 1
 }
 
-#write_state() {
-#    local new_date="$1"
-#    local new_sorted_file="$2"
-#    echo "{ \"date\": \"$new_date\", \"sortedFile\": \"$new_sorted_file\" }" | jq '.' > "$STATE_FILE"
-#}
-
 # Download a file into a given directory and return its filename
-download_dump() {
+# XXX Perhaps separate filename retrieval from download?
+resolve_filename() {
     local url="$1"
-    local output_path="$2"
-    # filename=$(basename "$url")
-    
     # Get filename from header
     local filename=$(curl -s -I "$url" | grep -oP 'filename=\K[^;]+')
 
@@ -36,14 +29,24 @@ download_dump() {
     # Optional: Remove special characters
     # filename=${filename//[^a-zA-Z0-9._-]/}
 
+    echo "$filename"
+}
+
+download_dump() {
+    local url="$1"
+    local output_path="$2"
+    
+    # Get filename from header
+    local filename=$(resolve_filename "$url")
+
     wget -c -P "$output_path" "$url"
     echo "$filename"
 }
 
 if [[ "${1:-}" == "--init" ]]; then
-    [ ! -f "$STATE_FILE" ] || { echo "Statefile already exists"; exit 1; }
-    echo "{ \"repo\": \"https://dumps.wikimedia.org/wikidatawiki/entities/\" }" | jq '.' > "$STATE_FILE"
-    echo "Initialized $STATE_FILE" >&2
+    [ ! -f "$CONF_FILE" ] || { echo "Statefile already exists"; exit 1; }
+    echo "{ \"repo\": \"https://dumps.wikimedia.org/wikidatawiki/entities/\", \"publishFolder\": \"publish\" }" | jq '.' > "$CONF_FILE"
+    echo "Initialized $CONF_FILE" >&2
     exit 0
 fi
 
@@ -52,25 +55,37 @@ if [[ -n "${1:-}" ]]; then
 fi
 
 # Begin of readState
-if [[ ! -f "$STATE_FILE" ]]; then
+if [[ ! -f "$CONF_FILE" ]]; then
     echo "Error: State file not found. Run with --init first." >&2
     exit 1
 fi
 
-content=$(cat "$STATE_FILE" 2>/dev/null) || true
+confJson=$(cat "$CONF_FILE")
 
-REPO_URL=$(echo "$content" | jq -r '.repo // ""' 2>/dev/null) || true
+REPO_URL=$(jq -r '.repo // ""' <<< "$confJson")
+PUBLISH_FOLDER=$(jq -r '.publishFolder // ""' <<< "$confJson")
+
 echo "Repo URL: $REPO_URL" >&2
 
-if [[ -z "$content" || "$content" == "{}" || "$content" == "null" || "$content" == "" ]]; then
-    OLD_DATE=""
-    OLD_SORTED_FILENAME=""
+# Publish folder must be configured
+[ -n "$PUBLISH_FOLDER" ] || { echo "publishFolder key not set in state file." >&2 ; exit 1; }
+mkdir -p "$PUBLISH_FOLDER"
+[ -d "$PUBLISH_FOLDER" ] || { echo "Not a directory: $PUBLISH_FOLDER" >&2 ; exit 1; }
+
+LATEST_STATE_FILE="$PUBLISH_FOLDER/publish-latest.json"
+[[ ! -e latest.json || -L latest.json ]] || { echo "Error: latest.json must be a symlink or absent" >&2; exit 1; }
+
+if [ -f "$LATEST_STATE_FILE" ]; then
+    stateJson=$(cat "$LATEST_STATE_FILE")
 else
-    OLD_DATE=$(echo "$content" | jq -r '.date // ""' 2>/dev/null) || true
-    [[ -z "$OLD_DATE" || "$OLD_DATE" == "null" ]] && OLD_DATE=""
-    OLD_SORTED_FILENAME=$(echo "$content" | jq -r '.sortedFile // ""' 2>/dev/null) || true
-    [[ -z "$OLD_SORTED_FILENAME" || "$OLD_SORTED_FILENAME" == "null" ]] && OLD_SORTED_FILENAME=""
+    stateJson="{}"
 fi
+
+OLD_DATE=$(jq -r '.date // ""' <<< "$stateJson")
+[[ -z "$OLD_DATE" || "$OLD_DATE" == "null" ]] && OLD_DATE=""
+OLD_SORTED_FILENAME=$(jq -r '.dump.filename // ""'<<< "$stateJson")
+[[ -z "$OLD_SORTED_FILENAME" || "$OLD_SORTED_FILENAME" == "null" ]] && OLD_SORTED_FILENAME=""
+
 # End of readState
 
 # Begin of fetch wikidata release state
@@ -162,14 +177,18 @@ else
     echo "No diff created (no previous state)" >&2
 fi
 
-echo "$json_obj" > "publish-$NEW_DATE.json"
+NEW_STATE_FILENAME="publish-$NEW_DATE.json"
+NEW_STATE_FILE="$PUBLISH_FOLDER/$NEW_STATE_FILENAME"
+echo "$json_obj" > "$NEW_STATE_FILE"
 
-relative_sorted_path="truthy-BETA/$NEW_YEAR/dumps/$sorted_filename"
+# Update latest statefile link.
+rm -f "$LATEST_STATE_FILE"
+ln -s "$NEW_STATE_FILENAME" "$LATEST_STATE_FILE"
+
+# relative_sorted_path="truthy-BETA/$NEW_YEAR/dumps/$sorted_filename"
 # write_state "$NEW_DATE" "$relative_sorted_path"
-echo "{ \"repo\": \"$REPO_URL\", \"date\": \"$NEW_DATE\", \"sortedFile\": \"$relative_sorted_path\" }" | jq '.' > "$STATE_FILE"
+# echo "{ \"repo\": \"$REPO_URL\", \"date\": \"$NEW_DATE\", \"sortedFile\": \"$relative_sorted_path\" }" | jq '.' > "$STATE_FILE"
 
 echo "State updated" >&2
 echo "Done" >&2
-
-
 
