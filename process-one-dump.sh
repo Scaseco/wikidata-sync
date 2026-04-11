@@ -75,8 +75,10 @@ mkdir -p "$PUBLISH_FOLDER"
 LATEST_STATE_FILE="$PUBLISH_FOLDER/publish-latest.json"
 [[ ! -e latest.json || -L latest.json ]] || { echo "Error: latest.json must be a symlink or absent" >&2; exit 1; }
 
+PUBLISH_OLD_STATE_FILENAME=""
 if [ -f "$LATEST_STATE_FILE" ]; then
     stateJson=$(cat "$LATEST_STATE_FILE")
+    PUBLISH_OLD_STATE_FILENAME=$(readlink "$LATEST_STATE_FILE")
 else
     stateJson="{}"
 fi
@@ -138,6 +140,16 @@ else
 fi
 
 json_obj='{"date": "'$NEW_DATE'"}'
+
+
+if [ -n "$PUBLISH_OLD_STATE_FILENAME" ]; then
+    echo "$OLD_DATE --- $PUBLISH_OLD_STATE_FILENAME"
+    json_obj=$(echo "$json_obj" | \
+        jq --arg d "$OLD_DATE" \
+           --arg p "$PUBLISH_OLD_STATE_FILENAME" \
+           '. + {prevDate: $d, prevPublishFile: $p}')
+fi
+
 json_obj=$(echo "$json_obj" | \
     jq --arg f "$orig_path" \
        --arg s "$orig_path.sha1" \
