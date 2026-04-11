@@ -64,7 +64,7 @@ confJson=$(cat "$CONF_FILE")
 
 REPO_URL=$(jq -r '.repo // ""' <<< "$confJson")
 PUBLISH_FOLDER=$(jq -r '.publishFolder // ""' <<< "$confJson")
-SORT_OPTS==$(jq -r '.sortOptions // ""' <<< "$confJson")
+SORT_OPTS=$(jq -r '.sortOptions // ""' <<< "$confJson")
 
 echo "Repo URL: $REPO_URL" >&2
 
