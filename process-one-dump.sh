@@ -64,6 +64,7 @@ confJson=$(cat "$CONF_FILE")
 
 REPO_URL=$(jq -r '.repo // ""' <<< "$confJson")
 PUBLISH_FOLDER=$(jq -r '.publishFolder // ""' <<< "$confJson")
+SORT_OPTS==$(jq -r '.sortOptions // ""' <<< "$confJson")
 
 echo "Repo URL: $REPO_URL" >&2
 
@@ -133,7 +134,7 @@ echo "Sorted file: $sorted_path" >&2
 
 if [ ! -f "$sorted_path" ]; then
     echo "Sorting $orig_path..." >&2
-    "$NQPATCH" track sort "$orig_path" "$sorted_path"
+    "$NQPATCH" track sort "$orig_path" "$sorted_path" $SORT_OPTS
     echo "Sort complete" >&2
 else
     echo "Already sorted: $sorted_path <- $orig_path" >&2
