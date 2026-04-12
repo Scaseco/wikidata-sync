@@ -45,7 +45,7 @@ download_dump() {
 
 if [[ "${1:-}" == "--init" ]]; then
     [ ! -f "$CONF_FILE" ] || { echo "Statefile already exists"; exit 1; }
-    echo "{ \"repo\": \"https://dumps.wikimedia.org/wikidatawiki/entities/\", \"publishFolder\": \"publish\" }" | jq '.' > "$CONF_FILE"
+    echo "{ \"repo\": \"https://dumps.wikimedia.org/wikidatawiki/entities/\", \"publishFolder\": \"publish\", \"sortOptions\": \"-S 16G\" }" | jq '.' > "$CONF_FILE"
     echo "Initialized $CONF_FILE" >&2
     exit 0
 fi
@@ -111,7 +111,7 @@ first_entry=$(echo "$response" | jq '.["truthy-BETA"][0]' 2>/dev/null)
 
 NEW_DATE=$(echo "$first_entry" | jq -r '.date' 2>/dev/null)
 NEW_URL=$(echo "$first_entry" | jq -r '.url' 2>/dev/null)
-NEW_YEAR="${NEW_DATE:0:4}"
+NEW_YEAR="${NEW_DATE::-4}" # cut off the last four digits: "20261231" -> "2026"
 
 # End of fetch wikidata release state
 
@@ -163,7 +163,7 @@ json_obj=$(echo "$json_obj" | \
        '. + {dump: {filename: $f, sha1: $s, "sha1-original": $o}}')
 
 if [[ -n "$OLD_DATE" && -n "$OLD_SORTED_FILENAME" ]]; then
-    old_year="${OLD_DATE:0:4}"
+    old_year="${OLD_DATE::-4}"
     diff_dir="truthy-BETA/$old_year/diffs"
     mkdir -p "$diff_dir"
 

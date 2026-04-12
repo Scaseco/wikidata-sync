@@ -3,7 +3,9 @@ Fast and simple tooling for Wikidata N-Triples.
 
 ## Setup
 
-Groovy is required.
+Requirements:
+* Groovy for fetching the Wikidata release state. Easy install using [SDKMAN](https://sdkman.io/): `sdk install groovy`.
+* NQPatch for creating patching between sorted N-Quads files: https://github.com/Scaseco/nqpatch-posix - clone the repo and make `nqpatch` available on the PATH.
 
 ```bash
 chmod +x wikidata-release-status.groovy
