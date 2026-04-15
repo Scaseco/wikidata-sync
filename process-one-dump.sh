@@ -86,7 +86,7 @@ fi
 
 OLD_DATE=$(jq -r '.date // ""' <<< "$stateJson")
 [[ -z "$OLD_DATE" || "$OLD_DATE" == "null" ]] && OLD_DATE=""
-OLD_SORTED_FILENAME=$(jq -r '.dump.filename // ""'<<< "$stateJson")
+OLD_SORTED_FILENAME=$(jq -r '.dump.file // ""'<<< "$stateJson")
 [[ -z "$OLD_SORTED_FILENAME" || "$OLD_SORTED_FILENAME" == "null" ]] && OLD_SORTED_FILENAME=""
 
 # End of readState
@@ -153,14 +153,13 @@ fi
 
 json_obj=$(echo "$json_obj" | \
     jq --arg f "$orig_path" \
-       --arg s "$orig_path.sha1" \
-       '. + {orig: {filename: $f, sha1: $s}}')
+       --arg m "$orig_path.meta.json" \
+       '. + {orig: {file: $f, meta: $m}}')
 
 json_obj=$(echo "$json_obj" | \
     jq --arg f "$sorted_path" \
-       --arg s "$sorted_path.sha1" \
-       --arg o "$sorted_path.sha1-original" \
-       '. + {dump: {filename: $f, sha1: $s, "sha1-original": $o}}')
+       --arg m "$sorted_path.meta.json" \
+       '. + {dump: {file: $f, meta: $m}}')
 
 if [[ -n "$OLD_DATE" && -n "$OLD_SORTED_FILENAME" ]]; then
     old_year="${OLD_DATE::-4}"
@@ -182,10 +181,8 @@ if [[ -n "$OLD_DATE" && -n "$OLD_SORTED_FILENAME" ]]; then
 
     json_obj=$(echo "$json_obj" | \
         jq --arg f "$diff_path" \
-           --arg s "$diff_path.sha1" \
-           --arg from "$diff_path.sha1-from" \
-           --arg to "$diff_path.sha1-to" \
-           '. + {diff: {filename: $f, sha1: $s, "sha1-from": $from, "sha1-to": $to }}')
+           --arg m "$diff_path.meta.json" \
+           '. + {diff: {file: $f, meta: $m }}')
 else
     echo "No diff created (no previous state)" >&2
 fi

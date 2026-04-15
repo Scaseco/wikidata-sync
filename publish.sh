@@ -38,21 +38,17 @@ publish_from_json() {
     [ -n "$NEW_YEAR" ] || { echo "Failed to extract year. Date string was [$NEW_DATE]" >&2; exit 1; }
 
     keys=(
-        "orig.filename"
-        "orig.sha1"
-        "dump.filename"
-        "dump.sha1"
-        "dump.sha1-original"
-        "diff.filename"
-        "diff.sha1"
-        "diff.sha1-from" # hyphen is no problem due to getpath!
-        "diff.sha1-to"
+        "orig.meta"
+        "dump.file"
+        "dump.meta"
+        "diff.file"
+        "diff.meta"
     )
 
     for key in "${keys[@]}"; do
         # Publish a sorted dump ONLY if it is the first of the year
         # XXX Also publish a dump if there is no OLD_YEAR value? right now we require a previous date.
-        if [[ "$key" == "orig.filename" && -n "$OLD_YEAR" && "$NEW_YEAR" == "$OLD_YEAR" ]]; then
+        if [[ "$key" == "dump.file" && (-z "$OLD_YEAR" || "$NEW_YEAR" == "$OLD_YEAR") ]]; then
             continue
         fi
     
