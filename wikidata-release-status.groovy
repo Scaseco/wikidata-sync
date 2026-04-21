@@ -44,25 +44,42 @@ def findAllDumps(JsonObject outJsonObject, List<String> baseNames, String baseUr
         .collect { LocalDate.parse(it, dateFormatter) }
         .sort()
 
-    for (date in dateDirs) {
-        if (since != null && !date.isAfter(since)) {
-            continue
-        }
+    def fileDatePattern = ~/(?<=wikidata-)\d{8}(?=-[^.]+\.nt\.bz2)/
 
+    Map<String, List<List>> filesByBaseName = baseNames.collectEntries { [it, []] }
+
+    for (date in dateDirs) {
         def dateStr = date.format(dateFormatter)
         def subUrl = "${baseUrl}${dateStr}/"
         def subPage = Jsoup.connect(subUrl).get()
 
-        baseNames.each { baseName ->
-            def expectedFile = "wikidata-${dateStr}-${baseName}.nt.bz2"
-            def found = subPage.select("a[href=${expectedFile}]")
+        subPage.select("a[href]").each { link ->
+            def href = link.attr("href")
+            if (!href.endsWith(".nt.bz2")) return
+            def matcher = (href =~ fileDatePattern)
+            if (!matcher.find()) return
 
-            if (!found.isEmpty()) {
-                JsonObject r = new JsonObject()
-                r.addProperty("date", dateStr)
-                r.addProperty("url", "${subUrl}${expectedFile}")
-                outJsonObject.getAsJsonArray(baseName).add(r)
+            def fileDateStr = matcher.group()
+            def fileDate = LocalDate.parse(fileDateStr, dateFormatter)
+
+            if (since != null && !fileDate.isAfter(since)) return
+
+            baseNames.each { baseName ->
+                def expectedFile = "wikidata-${fileDateStr}-${baseName}.nt.bz2"
+                if (href == expectedFile) {
+                    filesByBaseName[baseName] << [fileDate, "${subUrl}${href}"]
+                }
             }
+        }
+    }
+
+    filesByBaseName.each { baseName, fileList ->
+        fileList.sort { it.first }
+        fileList.each { fileDate, url ->
+            JsonObject r = new JsonObject()
+            r.addProperty("date", fileDate.format(dateFormatter))
+            r.addProperty("url", url)
+            outJsonObject.getAsJsonArray(baseName).add(r)
         }
     }
 }
