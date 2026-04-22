@@ -132,16 +132,10 @@ sorted_filename=$(echo "$orig_filename" | sed -E 's|^(.*)(.nt.bz2)$|\1.sorted\2|
 sorted_path="$dump_dir/$sorted_filename"
 echo "Sorted file: $sorted_path" >&2
 
-if [ ! -f "$sorted_path" ]; then
-    echo "Sorting $orig_path..." >&2
-    "$NQPATCH" track sort "$orig_path" "$sorted_path" $SORT_OPTS
-    echo "Sort complete" >&2
-else
-    echo "Already sorted: $sorted_path <- $orig_path" >&2
-fi
+"$NQPATCH" track sort "$orig_path" "$sorted_path" $SORT_OPTS
+echo "Sort complete" >&2
 
 json_obj='{"date": "'$NEW_DATE'"}'
-
 
 if [ -n "$PUBLISH_OLD_STATE_FILENAME" ]; then
     echo "$OLD_DATE --- $PUBLISH_OLD_STATE_FILENAME"
@@ -169,15 +163,11 @@ if [[ -n "$OLD_DATE" && -n "$OLD_SORTED_FILENAME" ]]; then
     diff_filename="wikidata-${OLD_DATE}-to-${NEW_DATE}-truthy-BETA.sorted.rdfp.bz2"
     diff_path="$diff_dir/$diff_filename"
 
-    if [ ! -f "$diff_path" ]; then
-        echo "Creating diff: $diff_path" >&2
-        echo "  from: $OLD_SORTED_FILENAME" >&2
-        echo "  to:   $sorted_path" >&2
-        "$NQPATCH" track create "$OLD_SORTED_FILENAME" "$sorted_path" "$diff_path"
-        echo "Diff complete" >&2
-    else
-        echo "Already diffed: $diff_path" >&2
-    fi
+    echo "Creating diff: $diff_path" >&2
+    echo "  from: $OLD_SORTED_FILENAME" >&2
+    echo "  to:   $sorted_path" >&2
+    "$NQPATCH" track create "$OLD_SORTED_FILENAME" "$sorted_path" "$diff_path"
+    echo "Diff complete" >&2
 
     json_obj=$(echo "$json_obj" | \
         jq --arg f "$diff_path" \
