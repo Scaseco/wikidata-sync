@@ -45,7 +45,7 @@ download_dump() {
 
 if [[ "${1:-}" == "--init" ]]; then
     [ ! -f "$CONF_FILE" ] || { echo "Statefile already exists"; exit 1; }
-    echo "{ \"repo\": \"https://dumps.wikimedia.org/wikidatawiki/entities/\", \"publishFolder\": \"publish\", \"sortOptions\": \"-S 16G\" }" | jq '.' > "$CONF_FILE"
+    echo "{ \"repo\": \"https://dumps.wikimedia.org/wikidatawiki/entities/\", \"publishFolder\": \"publish\", \"sortOptions\": \"-S 16G --compress-program lz4\", \"repoBasePath\": \"truthy-BETA\" }" | jq '.' > "$CONF_FILE"
     echo "Initialized $CONF_FILE" >&2
     exit 0
 fi
@@ -65,6 +65,7 @@ confJson=$(cat "$CONF_FILE")
 REPO_URL=$(jq -r '.repo // ""' <<< "$confJson")
 PUBLISH_FOLDER=$(jq -r '.publishFolder // ""' <<< "$confJson")
 SORT_OPTS=$(jq -r '.sortOptions // ""' <<< "$confJson")
+REPO_BASE_PATH=$(jq -r '.repoBasePath // "truthy-BETA"' <<< "$confJson")
 
 echo "Repo URL: $REPO_URL" >&2
 
@@ -90,6 +91,9 @@ OLD_SORTED_FILENAME=$(jq -r '.dump.file // ""'<<< "$stateJson")
 [[ -z "$OLD_SORTED_FILENAME" || "$OLD_SORTED_FILENAME" == "null" ]] && OLD_SORTED_FILENAME=""
 
 # End of readState
+
+# If there was no publish-latest.json then check the conf file for an initial date
+[[ -z "$OLD_DATE" ]] && OLD_DATE=$(jq -r '.date // ""' <<< "$confJson")
 
 # Begin of fetch wikidata release state
 
@@ -118,8 +122,8 @@ NEW_YEAR="${NEW_DATE::-4}" # cut off the last four digits: "20261231" -> "2026"
 echo "Processing dump: $NEW_DATE" >&2
 echo "URL: $NEW_URL" >&2
 
-orig_dir="truthy-BETA/$NEW_YEAR/origs"
-dump_dir="truthy-BETA/$NEW_YEAR/dumps"
+orig_dir="$REPO_BASE_PATH/$NEW_YEAR/origs"
+dump_dir="$REPO_BASE_PATH/$NEW_YEAR/dumps"
 mkdir -p "$orig_dir"
 mkdir -p "$dump_dir"
 
@@ -157,7 +161,7 @@ json_obj=$(echo "$json_obj" | \
 
 if [[ -n "$OLD_DATE" && -n "$OLD_SORTED_FILENAME" ]]; then
     old_year="${OLD_DATE::-4}"
-    diff_dir="truthy-BETA/$old_year/diffs"
+    diff_dir="$REPO_BASE_PATH/$old_year/diffs"
     mkdir -p "$diff_dir"
 
     diff_filename="wikidata-${OLD_DATE}-to-${NEW_DATE}-truthy-BETA.sorted.rdfp.bz2"

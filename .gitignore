@@ -26,3 +26,6 @@ replay_pid*
 # Statefile
 wikidata-sync.conf.json
 
+# symlink to the truthy-BETA with the actual data
+truthy-BETA
+
