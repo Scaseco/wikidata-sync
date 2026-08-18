@@ -7,6 +7,24 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PUBLISH_FOLDER="publish"
 STATE_FILE="publisher-state.txt"
 
+CONF_FILE="$SCRIPT_DIR/wikidata-sync.conf.json"
+confJson=""
+[[ -f "$CONF_FILE" ]] && confJson=$(cat "$CONF_FILE")
+
+backend=""
+if [[ -n "$confJson" ]]; then
+    backend=$(jq -r '.publishBackend // empty' <<< "$confJson")
+fi
+[[ -z "$backend" ]] && backend="publish-git.sh"
+[[ "$backend" != /* ]] && backend="$SCRIPT_DIR/$backend"
+PUBLISH_BACKEND="$backend"
+
+if [[ ! -f "$PUBLISH_BACKEND" ]]; then
+    echo "Error: publish backend not found: $PUBLISH_BACKEND" >&2
+    exit 1
+fi
+source "$PUBLISH_BACKEND"
+
 
 resolve_json_path() {
     local filename="$1"
@@ -17,12 +35,6 @@ resolve_json_path() {
     fi
 }
 
-
-publish_one_file() {
-    local key="$1"
-    local file="$2"
-    echo "Publishing $1: $2" >&2
-}
 
 publish_from_json() {
     local json_file="$1"
@@ -54,16 +66,13 @@ publish_from_json() {
     
         value="$(jq -r --arg k "$key" 'getpath($k | split(".")) // empty' <<< "$json_content")"
         if [ -n "$value" ]; then
-            publish_one_file "$key" "$value"
+            publish_one_file "$json_content" "$key" "$value"
         fi
     done
+
+    publish_one_manifest "$json_content"
 }
 
-
-publish_once() {
-
-    echo "$publish_file" > "$STATE_FILE"
-}
 
 main() {
     local latest_link="$PUBLISH_FOLDER/publish-latest.json"

@@ -23,8 +23,17 @@
 hs_err_pid*
 replay_pid*
 
-# Statefile
+# Folder for publish manifests
+publish
+
+# Configuration file
 wikidata-sync.conf.json
+
+# Publisher statefile
+publisher-state.txt
+
+# git backend config (machine-specific path)
+publish-git.conf
 
 # symlink to the truthy-BETA with the actual data
 truthy-BETA

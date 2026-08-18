@@ -45,7 +45,7 @@ download_dump() {
 
 if [[ "${1:-}" == "--init" ]]; then
     [ ! -f "$CONF_FILE" ] || { echo "Statefile already exists"; exit 1; }
-    echo "{ \"repo\": \"https://dumps.wikimedia.org/wikidatawiki/entities/\", \"publishFolder\": \"publish\", \"sortOptions\": \"-S 16G --compress-program lz4\", \"repoBasePath\": \"truthy-BETA\" }" | jq '.' > "$CONF_FILE"
+    echo "{ \"repo\": \"https://dumps.wikimedia.org/wikidatawiki/entities/\", \"publishFolder\": \"publish\", \"sortOptions\": \"-S 16G --compress-program lz4\", \"repoBasePath\": \"truthy-BETA\", \"publishBackend\": \"publish-git.sh\" }" | jq '.' > "$CONF_FILE"
     echo "Initialized $CONF_FILE" >&2
     exit 0
 fi
