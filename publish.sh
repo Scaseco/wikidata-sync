@@ -3,6 +3,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+DRY_RUN=""
+for arg in "$@"; do
+    [[ "$arg" == "--dry-run" ]] && DRY_RUN="1"
+done
+
 # PUBLISH_FOLDER="$SCRIPT_DIR/publish"
 PUBLISH_FOLDER="publish"
 STATE_FILE="publisher-state.txt"
@@ -17,6 +22,9 @@ if [[ -n "$confJson" ]]; then
 fi
 [[ -z "$backend" ]] && backend="publish-git.sh"
 [[ "$backend" != /* ]] && backend="$SCRIPT_DIR/$backend"
+if [[ -n "$DRY_RUN" ]]; then
+    backend="$SCRIPT_DIR/publish-dryrun.sh"
+fi
 PUBLISH_BACKEND="$backend"
 
 if [[ ! -f "$PUBLISH_BACKEND" ]]; then
@@ -75,6 +83,8 @@ publish_from_json() {
 
 
 main() {
+    [[ -n "$DRY_RUN" ]] && echo "DRY RUN: no files will be published and the state file will not change" >&2
+
     local latest_link="$PUBLISH_FOLDER/publish-latest.json"
     
     if [[ ! -e "$latest_link" ]]; then
@@ -123,8 +133,10 @@ main() {
         echo "Processing: $publish_path" >&2
         
         publish_from_json "$publish_path"
-        
-        echo "$publish_file" > "$STATE_FILE"
+
+        if [[ -z "$DRY_RUN" ]]; then
+            echo "$publish_file" > "$STATE_FILE"
+        fi
     done
     
     echo "Done" >&2
